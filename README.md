@@ -41,7 +41,7 @@ Each bundle (e.g. `duck_test_v0-bundle.json`) contains:
     "traits": {
       "scalars": [{ "id": "trait_a", "name": "Trait A", "default": 0.5, "weight": 1 }],
       "tags": [{ "id": "feature_x", "name": "Feature X" }],
-      "categoricals": [{
+      "categoricals": [{ 
         "id": "category_y",
         "name": "Category Y",
         "options": [{ "id": "y1", "label": "Y1" }]
@@ -74,45 +74,39 @@ Each bundle (e.g. `duck_test_v0-bundle.json`) contains:
 
 ---
 
-## 🧠 How It Works
-
-- **Schemas** define scalar traits (0–1 floats), tags (binary), and categoricals (multi-select).  
-- **Weights** express importance for each scalar.  
-- **Filters** (tags + categoricals) narrow the search space.  
-- **Scores** are calculated via the chosen `engine.scoring` method — by default `"manhattan-lite"`.  
-- **Bundles** are self-contained, portable, and editable in any text editor.
-
----
-
 ## ⚙️ Run It
 
-### Locally
+### 0) **No server — fully static (offline)**
+You can run this without any server.
+1. Click **Code ▸ Download ZIP** on this repo (or use **Raw ▸ Save As…** on `index.html`).  
+2. Unzip locally and **double‑click `index.html`** to open it in your browser.  
+3. Use the page’s **“Load bundle” file picker or drag‑and‑drop** to load a `*_bundle.json` from the `/bundles/` folder.  
+   - This avoids browser security limits on `fetch()` from `file://` URLs, so everything works offline.
+
+### 1) Hosted (GitHub Pages)
+Open the live page:  
+👉 **https://andrew-t-fielden.github.io/affinari_lite/**
+
+- You can pass a bundle via query string (when hosted):  
+  `https://andrew-t-fielden.github.io/affinari_lite/?bundle=/bundles/duck_test_v0-bundle.json`
+
+### 2) Optional local server (if you prefer)
 ```bash
 python3 -m http.server 8000
 # then open http://localhost:8000
-```
-
-### GitHub Pages
-This repo is already configured for GitHub Pages:  
-👉 **https://andrew-t-fielden.github.io/affinari_lite/**
-
-You can also specify a bundle directly:
-
-```
-https://andrew-t-fielden.github.io/affinari_lite/?bundle=/bundles/duck_test_v0-bundle.json
 ```
 
 ---
 
 ## 🪄 Create Your Own Bundle (via ChatGPT)
 
-[![Open in ChatGPT](https://img.shields.io/badge/Open_in_ChatGPT-00a37f?logo=openai&logoColor=white&style=for-the-badge)](https://chat.openai.com/?q=You%20are%20ChatGPT%20(GPT-5)%20Help%20me%20create%20a%20single-file%20Affinari%20Lite%20bundle%20for%20my%20domain%2C%20following%20the%20JSON%20structure%20in%20the%20reference%20export%20(bundle_version%2C%20created_at%2C%20schema%2Fengine%2Ftraits%2Fdefaults%2C%20items%2C%20profiles).%20Use%20my%20repo%20for%20conventions%3A%20https%3A%2F%2Fgithub.com%2FAndrew-T-Fielden%2Faffinari_lite.%20Tasks%3A%201)%20Propose%20traits.%202)%20Produce%20a%20single%20JSON%20%3Cdomain%3E_v0-bundle.json.%203)%20Include%205%E2%80%9310%20items.%204)%20Scoring%3A%20method%3Dmanhattan-lite%2C%20normalization%3Dweights_sum%2C%20missing_scalar%3Dignore.%205)%20Return%20the%20bundle%20and%20a%20short%20README.%20)
+[![Open in ChatGPT](https://img.shields.io/badge/Open_in_ChatGPT-00a37f?logo=openai&logoColor=white&style=for-the-badge)](https://chat.openai.com/?q=You%20are%20ChatGPT%20%28GPT-5%29.%20Help%20me%20create%20a%20single-file%20Affinari%20Lite%20bundle%20for%20my%20domain%2C%20following%20the%20JSON%20structure%20in%20the%20reference%20export%20%28bundle_version%2C%20created_at%2C%20schema%2Fengine%2Ftraits%2Fdefaults%2C%20items%2C%20profiles%29.%20Use%20my%20repo%20for%20conventions%3A%20https%3A%2F%2Fgithub.com%2FAndrew-T-Fielden%2Faffinari_lite.%20Tasks%3A%201%29%20Propose%20traits.%202%29%20Produce%20a%20single%20JSON%20%3Cdomain%3E_v0-bundle.json.%203%29%20Include%205%E2%80%9310%20items.%204%29%20Scoring%3A%20method%3Dmanhattan-lite%2C%20normalization%3Dweights_sum%2C%20missing_scalar%3Dignore.%205%29%20Return%20the%20bundle%20and%20a%20short%20README%20telling%20me%20where%20to%20put%20it%20and%20how%20to%20load%20it.)
 
-This button opens ChatGPT with an instruction that will:
+This opens ChatGPT with an instruction that will:
 1. Generate 3–7 scalar traits, tags, and categoricals for your chosen domain.  
 2. Build a valid `*_v0-bundle.json` following the Affinari schema.  
 3. Provide 5–10 example items.  
-4. Return both the bundle and a short README snippet describing where to place it (`/bundles/`).  
+4. Return both the bundle and a short README snippet describing where to place it (`/bundles/`) and how to load it.
 
 ---
 
@@ -134,14 +128,14 @@ affinari_lite/
 ## 🧩 Extending It
 
 - Create new bundles for different domains (`/bundles/<domain>_v0-bundle.json`).  
-- Update the query string `?bundle=…` to switch between them.  
-- Adapt the UI for extra scalar visualisations, graphs, or cosine-based “doppelganger” views.
+- Switch bundles either by file‑picking (offline) or `?bundle=` (hosted).  
+- Extend the UI with charts, saved profiles, or cosine‑based “doppelganger” views.
 
 ---
 
 ## 🔗 Related Projects
 - **Parent Project:** [Affinari](https://github.com/Andrew-T-Fielden/affinari)  
-- **Affinari Lite Demo Page:** [GitHub Pages Deployment](https://andrew-t-fielden.github.io/affinari_lite/)
+- **Affinari Lite (hosted):** https://andrew-t-fielden.github.io/affinari_lite/
 
 ---
 

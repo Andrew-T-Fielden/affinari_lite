@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Affinari Lite – Local-First</title>
+  <style>
+    :root {
+      --bg: #0b0d10; --fg: #e6edf3; --muted: #9aa7b2; --brand: #6ee7ff; --panel: #11161b; --card: #0f1419; --accent: #8bffb5; --danger: #ff6e6e;
+      --border: #1f2a33; --chip: #1b2229; --shadow: rgba(0,0,0,.25);
+    }
+    html, body { height: 100%; }
+    body { margin: 0; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; color: var(--fg); background: radial-gradient(1200px 1200px at 10% -10%, #0e1318 20%, #0b0d10 60%); }
+    header { position: sticky; top: 0; z-index: 3; backdrop-filter: blur(6px); background: linear-gradient(180deg, rgba(11,13,16,.85), rgba(11,13,16,.65)); border-bottom: 1px solid var(--border); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px 20px; }
+    h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+    h1 span { color: var(--brand); }
+    .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .toolbar .select, .toolbar button { background: var(--panel); border: 1px solid var(--border); color: var(--fg); padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+    .toolbar .select { min-width: 220px; }
+    .toolbar button:hover { box-shadow: 0 0 0 2px rgba(110,231,255,.15) inset; }
+
+    main { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 18px 20px; max-width: 1200px; margin: 0 auto; }
+
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 8px 24px var(--shadow); overflow: clip; }
+    .panel h2 { margin: 0; padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #0f1419, #0d1217); }
+    .panel .content { padding: 12px 14px; }
+
+    .section { margin-bottom: 16px; }
+    .section h3 { margin: 0 0 8px 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+
+    label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; }
+    input[type="range"] { width: 160px; }
+    input[type="text"], input[type="number"], select, textarea { background: var(--card); border: 1px solid var(--border); color: var(--fg); border-radius: 10px; padding: 6px 8px; }
+
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { background: var(--chip); border: 1px solid var(--border); padding: 6px 8px; border-radius: 999px; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; }
+
+    .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+    .score { font-weight: 700; }
+
+    .tabs { display: flex; gap: 6px; }
+    .tab { background: var(--panel); border: 1px solid var(--border); color: var(--fg); padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 13px; }
+    .tab.active { outline: 2px solid rgba(139,255,181,.25); }
+
+    .muted { color: var(--muted); }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .grow { flex: 1; }
+
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th, .table td { border-bottom: 1px solid var(--border); padding: 8px; text-align: left; }
+    .table th { color: var(--muted); font-weight: 600; }
+
+    .danger { color: var(--danger); }
+    details > summary { cursor: pointer; }
+
+    .footer { max-width: 1200px; margin: 20px auto 40px; padding: 0 20px; color: var(--muted); font-size: 12px; }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Affinari <span>Lite</span> — Local‑First</h1>
+      <div class="sub">Single HTML file • Works offline • Import/Export JSON • IndexedDB storage • Deterministic scoring</div>
+      <div class="toolbar">
+        <select id="schemaSelect" class="select"></select>
+        <button id="btnRun">Run Matching</button>
+        <button id="btnImportBundle">Import Bundle</button>
+        <button id="btnExportBundle">Export Bundle</button>
+        <button id="btnAboutMaths">About the maths</button>
+        <span id="status" class="muted"></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" id="leftPanel">
+      <h2>Preferences & Filters</h2>
+      <div class="content" id="prefs"></div>
+    </section>
+
+    <section class="panel">
+      <h2>
+        <span>Workspace</span>
+      </h2>
+      <div class="content">
+        <div class="tabs">
+          <button class="tab active" data-tab="runner">Runner</button>
+          <button class="tab" data-tab="data">Data Editor</button>
+          <button class="tab" data-tab="schema">Schema Editor</button>
+          <button class="tab" data-tab="repo">Repository</button>
+        </div>
+
+        <div id="tab-runner" class="tabpane" style="margin-top:12px;">
+          <div class="row muted" style="margin-bottom:8px;">Current schema: <strong id="currentSchemaName" style="margin-left:6px;"></strong></div>
+          <div id="results" class="results"></div>
+        </div>
+
+        <div id="tab-data" class="tabpane" hidden>
+          <div class="row" style="margin:8px 0;">
+            <button id="btnAddItem">Add item</button>
+            <button id="btnReplaceItems">Import items.json</button>
+            <button id="btnExportItems">Export items.json</button>
+            <span class="muted" id="itemsCount"></span>
+          </div>
+          <div id="dataTableWrap"></div>
+        </div>
+
+        <div id="tab-schema" class="tabpane" hidden>
+          <div class="row" style="margin:8px 0;">
+            <button id="btnReplaceSchema">Import schema.json</button>
+            <button id="btnExportSchema">Export schema.json</button>
+            <button id="btnNewScalar">Add scalar</button>
+            <button id="btnNewTag">Add tag</button>
+            <button id="btnNewCategorical">Add categorical</button>
+          </div>
+          <pre id="schemaJson" style="background:var(--card); padding:10px; border:1px solid var(--border); border-radius:10px; max-height:420px; overflow:auto;"></pre>
+        </div>
+
+        <div id="tab-repo" class="tabpane" hidden>
+          <p class="muted">Optional repository downloads (pull-only). For now, two built-in examples are installed locally: <em>Duck Test</em> and <em>Hotels (Lite)</em>. Remote packs can be added later.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="footer wrap">
+    <details>
+      <summary>Local storage & privacy</summary>
+      <p>This page uses your browser's IndexedDB to store schemas, items, and profiles. Nothing leaves your device unless you explicitly export a file.</p>
+    </details>
+  </div>
+
+  <!-- Simple modal for maths -->
+  <dialog id="mathsDialog" style="max-width: 860px; width: 96%; border:1px solid var(--border); border-radius:14px; background: var(--panel); color: var(--fg);">
+    <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+      <strong>About the maths</strong>
+      <form method="dialog"><button>Close</button></form>
+    </div>
+    <div style="padding:16px;">
+      <p><strong>Filtering.</strong> Items must satisfy required tags, must not contain excluded tags, and must intersect any categorical filters.</p>
+      <p><strong>Scoring (Manhattan‑lite).</strong> For scalars on [0,1], we compute a weighted Manhattan distance between your preferences (<em>P</em>) and an item (<em>I</em>):</p>
+      <pre style="white-space:pre-wrap;">distance = Σ_i w_i * | P_i − I_i |
+score    = 1 − ( distance / Σ_i w_i_used )</pre>
+      <p>The score is in [0,1]. Higher is better. Missing scalar values are ignored by default; you can change this policy in the schema later.</p>
+      <p><strong>Tie‑breaks.</strong> If scores are equal, we sort by the listed tie‑break scalar(s) (e.g., <code>value_for_money</code>), then by name.</p>
+      <p>All computations are deterministic and run locally in your browser.</p>
+    </div>
+  </dialog>
+
+  <script>
+  // ------------------------------
+  // Minimal IndexedDB wrapper
+  // ------------------------------
+  const DB_NAME = 'affinari-lite-db';
+  const DB_VERSION = 1;
+  let dbPromise;
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('schemas')) db.createObjectStore('schemas', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('datasets')) db.createObjectStore('datasets', { keyPath: 'domain_schema_id' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  async function idbGet(store, key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readonly');
+      const os = tx.objectStore(store);
+      const req = os.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbPut(store, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readwrite');
+      const os = tx.objectStore(store);
+      const req = os.put(value);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbAll(store) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readonly');
+      const os = tx.objectStore(store);
+      const req = os.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // ------------------------------
+  // Built-in example schemas & data
+  // ------------------------------
+  const SCHEMA_DUCK = {
+    id: 'duck_test_v0',
+    name: 'Duck Test',
+    version: '0.1.0',
+    description: 'If it walks like a duck, swims like a duck, and quacks like a duck…',
+    engine: { min_schema_version: '0.1.0', scoring: { method: 'manhattan-lite', normalization: 'weights_sum', ties: ['duckness'], missing_scalar: 'ignore' } },
+    traits: {
+      scalars: [
+        { id: 'walks_like_duck', name: 'Walks like a duck', default: 0.5, weight: 1 },
+        { id: 'swims_like_duck', name: 'Swims like a duck', default: 0.5, weight: 1 },
+        { id: 'quacks_like_duck', name: 'Quacks like a duck', default: 0.5, weight: 1 },
+        { id: 'duckness', name: 'Overall duckness (tie-break)', default: 0.5, weight: 0 }
+      ],
+      tags: [ { id: 'waterfowl', name: 'Waterfowl' } ],
+      categoricals: [ { id: 'habitat', name: 'Habitat', options: [ {id:'freshwater', label:'Freshwater'}, {id:'marine', label:'Marine'}, {id:'terrestrial', label:'Terrestrial'} ] } ]
+    },
+    defaults: {
+      weights: { walks_like_duck: 1, swims_like_duck: 1, quacks_like_duck: 1, duckness: 0 },
+      required_tags: [], excluded_tags: [], categorical_filters: {}
+    }
+  };
+  const ITEMS_DUCK = {
+    domain_schema_id: 'duck_test_v0', domain_schema_version: '0.1.0', items: [
+      { id:'a_duck', name:'Mallard Duck', traits:{ scalars:{ walks_like_duck:1, swims_like_duck:1, quacks_like_duck:1, duckness:1 }, tags:{ waterfowl:true }, categoricals:{ habitat:['freshwater'] } } },
+      { id:'a_goose', name:'Canada Goose', traits:{ scalars:{ walks_like_duck:0.8, swims_like_duck:0.9, quacks_like_duck:0.2, duckness:0.6 }, tags:{ waterfowl:true }, categoricals:{ habitat:['freshwater'] } } },
+      { id:'a_loon', name:'Common Loon', traits:{ scalars:{ walks_like_duck:0.6, swims_like_duck:1.0, quacks_like_duck:0.1, duckness:0.5 }, tags:{ waterfowl:true }, categoricals:{ habitat:['freshwater','marine'] } } },
+      { id:'a_platypus', name:'Platypus', traits:{ scalars:{ walks_like_duck:0.3, swims_like_duck:0.9, quacks_like_duck:0.0, duckness:0.2 }, tags:{ waterfowl:false }, categoricals:{ habitat:['freshwater'] } } },
+      { id:'a_dog', name:'Dog', traits:{ scalars:{ walks_like_duck:0.0, swims_like_duck:0.2, quacks_like_duck:0.0, duckness:0.0 }, tags:{ waterfowl:false }, categoricals:{ habitat:['terrestrial'] } } }
+    ] };
+
+  const SCHEMA_HOTELS = {
+    id: 'hotels_v0',
+    name: 'Hotels (Lite)',
+    version: '0.1.0',
+    description: 'Lite schema for hotels.',
+    engine: { min_schema_version: '0.1.0', scoring: { method: 'manhattan-lite', normalization: 'weights_sum', ties: ['value_for_money'], missing_scalar: 'ignore' } },
+    traits: {
+      scalars: [
+        { id:'luxury', name:'Luxury', default:0.5, weight:1 },
+        { id:'family_friendly', name:'Family Friendly', default:0.5, weight:1 },
+        { id:'value_for_money', name:'Value for Money', default:0.5, weight:1 }
+      ],
+      tags: [ { id:'beachfront', name:'Beachfront' }, { id:'pool', name:'Pool' } ],
+      categoricals: [ { id:'neighbourhood', name:'Neighbourhood', options:[ {id:'old_town', label:'Old Town'}, {id:'seafront', label:'Seafront'} ] } ]
+    },
+    defaults: { weights:{ luxury:1, family_friendly:1, value_for_money:1 }, required_tags:[], excluded_tags:[], categorical_filters:{} }
+  };
+  const ITEMS_HOTELS = {
+    domain_schema_id: 'hotels_v0', domain_schema_version: '0.1.0', items: [
+      { id:'h001', name:'Seaward Inn', traits:{ scalars:{ luxury:0.6, family_friendly:0.8, value_for_money:0.7 }, tags:{ beachfront:true, pool:true }, categoricals:{ neighbourhood:['seafront'] } } },
+      { id:'h002', name:'Old Town Suites', traits:{ scalars:{ luxury:0.7, family_friendly:0.4, value_for_money:0.8 }, tags:{ beachfront:false, pool:false }, categoricals:{ neighbourhood:['old_town'] } } },
+      { id:'h003', name:'Harbour House', traits:{ scalars:{ luxury:0.5, family_friendly:0.6, value_for_money:0.9 }, tags:{ beachfront:false, pool:true }, categoricals:{ neighbourhood:['seafront','old_town'] } } }
+    ] };
+
+  // ------------------------------
+  // Simple validators (shape + key cross-checks)
+  // ------------------------------
+  function validateSchema(schema) {
+    const errors = [];
+    const reqTop = ['id','name','version','engine','traits'];
+    reqTop.forEach(k => { if (!(k in schema)) errors.push(`schema missing ${k}`); });
+    if (!schema.traits) return errors;
+    const setId = new Set();
+    for (const s of (schema.traits.scalars||[])) { if (!s.id) errors.push('scalar missing id'); if (setId.has(s.id)) errors.push('duplicate scalar id '+s.id); setId.add(s.id); }
+    const tagId = new Set();
+    for (const t of (schema.traits.tags||[])) { if (!t.id) errors.push('tag missing id'); if (tagId.has(t.id)) errors.push('duplicate tag id '+t.id); tagId.add(t.id); }
+    const catId = new Set();
+    const catOpts = {}; 
+    for (const c of (schema.traits.categoricals||[])) { if (!c.id) errors.push('categorical missing id'); if (catId.has(c.id)) errors.push('duplicate categorical id '+c.id); catId.add(c.id); catOpts[c.id] = new Set((c.options||[]).map(o=>o.id)); }
+    return errors;
+  }
+  function validateItems(itemsBundle, schema) {
+    const errors = [];
+    if (!itemsBundle || !Array.isArray(itemsBundle.items)) { errors.push('items bundle shape invalid'); return errors; }
+    const scalars = new Set((schema.traits.scalars||[]).map(s=>s.id));
+    const tags = new Set((schema.traits.tags||[]).map(t=>t.id));
+    const cats = new Map((schema.traits.categoricals||[]).map(c=>[c.id, new Set((c.options||[]).map(o=>o.id))]));
+    for (const it of itemsBundle.items) {
+      if (!it.id || !it.name) errors.push(`item missing id/name`);
+      const tr = it.traits||{};
+      // scalars
+      for (const k of Object.keys(tr.scalars||{})) if (!scalars.has(k)) errors.push(`item ${it.id}: unknown scalar ${k}`);
+      // tags
+      for (const k of Object.keys(tr.tags||{})) if (!tags.has(k)) errors.push(`item ${it.id}: unknown tag ${k}`);
+      // categoricals
+      for (const [catKey, arr] of Object.entries(tr.categoricals||{})) {
+        if (!cats.has(catKey)) { errors.push(`item ${it.id}: unknown categorical ${catKey}`); continue; }
+        const allowed = cats.get(catKey);
+        for (const v of arr) if (!allowed.has(v)) errors.push(`item ${it.id}: invalid option ${catKey}:${v}`);
+      }
+    }
+    return errors;
+  }
+
+  // ------------------------------
+  // Engine (manhattan-lite)
+  // ------------------------------
+  function filterItem(item, prefs, schema) {
+    const reqTags = new Set(prefs.required_tags||[]);
+    const exTags = new Set(prefs.excluded_tags||[]);
+    const catFilters = prefs.categorical_filters || {};
+    const t = item.traits || { scalars:{}, tags:{}, categoricals:{} };
+    // required tags
+    for (const k of reqTags) if (!t.tags || !t.tags[k]) return false;
+    // excluded tags
+    for (const k of exTags) if (t.tags && t.tags[k]) return false;
+    // categorical intersection pass
+    for (const [cat, vals] of Object.entries(catFilters)) {
+      if (!Array.isArray(vals) || vals.length === 0) continue;
+      const ivals = new Set((t.categoricals && t.categoricals[cat]) || []);
+      let ok = false; for (const v of vals) if (ivals.has(v)) { ok = true; break; }
+      if (!ok) return false;
+    }
+    return true;
+  }
+  function scoreItem(item, prefs, schema) {
+    const weights = prefs.weights || {};
+    const t = item.traits || { scalars:{} };
+    let sumW = 0, dist = 0;
+    for (const s of (schema.traits.scalars||[])) {
+      const w = (weights[s.id] ?? s.weight ?? 0);
+      if (w <= 0) continue;
+      const pref = prefs.scalars && typeof prefs.scalars[s.id]==='number' ? prefs.scalars[s.id] : (s.default ?? 0.5);
+      const val = (t.scalars && typeof t.scalars[s.id]==='number') ? t.scalars[s.id] : null;
+      if (val==null) {
+        // missing policy: ignore (default)
+        continue;
+      }
+      dist += w * Math.abs(pref - val);
+      sumW += w;
+    }
+    if (sumW === 0) return { score: 0, dist: 0 };
+    const score = 1 - (dist / sumW);
+    return { score, dist };
+  }
+
+  // ------------------------------
+  // UI Wiring
+  // ------------------------------
+  const els = {
+    schemaSelect: document.getElementById('schemaSelect'),
+    status: document.getElementById('status'),
+    prefs: document.getElementById('prefs'),
+    results: document.getElementById('results'),
+    schemaJson: document.getElementById('schemaJson'),
+    itemsCount: document.getElementById('itemsCount'),
+    currentSchemaName: document.getElementById('currentSchemaName'),
+    mathsDialog: document.getElementById('mathsDialog'),
+  };
+
+  let currentSchema = null; // active schema object
+  let currentItems = null;  // active items bundle
+  let currentPrefs = null;  // active user prefs (weights, scalars, tag filters, categorical filters)
+
+  function setStatus(msg) { els.status.textContent = msg || ''; }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const name = btn.dataset.tab;
+      document.querySelectorAll('.tabpane').forEach(p=>p.hidden=true);
+      document.getElementById(`tab-${name}`).hidden=false;
+      if (name==='schema') refreshSchemaEditor();
+      if (name==='data') renderDataTable();
+    });
+  });
+
+  // Maths modal
+  document.getElementById('btnAboutMaths').addEventListener('click', ()=> els.mathsDialog.showModal());
+
+  // Schema select
+  els.schemaSelect.addEventListener('change', async () => {
+    const id = els.schemaSelect.value; if (!id) return;
+    const s = await idbGet('schemas', id);
+    const d = await idbGet('datasets', id);
+    if (!s || !d) return;
+    await setActiveSchemaAndItems(s, d);
+  });
+
+  // Run
+  document.getElementById('btnRun').addEventListener('click', runMatching);
+
+  // Import/Export bundle
+  document.getElementById('btnImportBundle').addEventListener('click', async ()=>{
+    const file = await pickFile('.json'); if (!file) return;
+    try {
+      const text = await file.text();
+      const bundle = JSON.parse(text);
+      if (!bundle.schema || !bundle.items) throw new Error('Invalid bundle: missing schema/items');
+      const sErr = validateSchema(bundle.schema); if (sErr.length) throw new Error('Schema errors: '+sErr.join(', '));
+      const iErr = validateItems(bundle.items, bundle.schema); if (iErr.length) throw new Error('Items errors: '+iErr.join(', '));
+      await idbPut('schemas', bundle.schema);
+      await idbPut('datasets', { ...bundle.items, domain_schema_id: bundle.schema.id });
+      await refreshSchemaSelect(bundle.schema.id);
+      setStatus('Bundle imported.');
+    } catch (e) { alert('Import failed: '+e.message); }
+  });
+  document.getElementById('btnExportBundle').addEventListener('click', async ()=>{
+    if (!currentSchema || !currentItems) { alert('Nothing to export'); return; }
+    const out = { bundle_version:"0.1.0", created_at: new Date().toISOString(), schema: currentSchema, items: currentItems, profiles: [] };
+    const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    downloadBlob(blob, `${currentSchema.id}-bundle.json`);
+  });
+
+  // Data Editor actions
+  document.getElementById('btnAddItem').addEventListener('click', ()=>{
+    if (!currentItems) return; 
+    const nid = 'item_'+Math.random().toString(36).slice(2,8);
+    currentItems.items.push({ id:nid, name:'New Item', traits:{ scalars:{}, tags:{}, categoricals:{} } });
+    saveItems();
+    renderDataTable();
+  });
+  document.getElementById('btnReplaceItems').addEventListener('click', async ()=>{
+    if (!currentSchema) return;
+    const file = await pickFile('.json'); if (!file) return;
+    try { const text = await file.text(); const bundle = JSON.parse(text); if (!Array.isArray(bundle.items)) throw new Error('Expected { items: [...] }');
+      const shaped = { domain_schema_id: currentSchema.id, domain_schema_version: currentSchema.version, items: bundle.items };
+      const errs = validateItems(shaped, currentSchema); if (errs.length) throw new Error(errs.join('\n'));
+      currentItems = shaped; await saveItems(); renderDataTable(); setStatus('Items replaced.');
+    } catch(e){ alert('Import failed: '+e.message); }
+  });
+  document.getElementById('btnExportItems').addEventListener('click', ()=>{
+    if (!currentItems) return; const blob = new Blob([JSON.stringify(currentItems, null, 2)], {type:'application/json'});
+    downloadBlob(blob, `${currentSchema.id}-items.json`);
+  });
+
+  // Schema Editor actions
+  document.getElementById('btnReplaceSchema').addEventListener('click', async ()=>{
+    const file = await pickFile('.json'); if (!file) return;
+    try { const text = await file.text(); const s = JSON.parse(text); const errs = validateSchema(s); if (errs.length) throw new Error(errs.join('\n'));
+      await idbPut('schemas', s);
+      await refreshSchemaSelect(s.id);
+      setStatus('Schema replaced.');
+    } catch(e){ alert('Schema import failed: '+e.message); }
+  });
+  document.getElementById('btnExportSchema').addEventListener('click', ()=>{
+    if (!currentSchema) return; const blob = new Blob([JSON.stringify(currentSchema, null, 2)], {type:'application/json'});
+    downloadBlob(blob, `${currentSchema.id}-schema.json`);
+  });
+  document.getElementById('btnNewScalar').addEventListener('click', ()=>{
+    if (!currentSchema) return; const id = prompt('Scalar id (a-z0-9_-)'); if (!id) return; const name = prompt('Scalar name');
+    currentSchema.traits.scalars.push({ id, name, default:0.5, weight:1 }); saveSchema(); refreshSchemaEditor(); buildPrefsUI();
+  });
+  document.getElementById('btnNewTag').addEventListener('click', ()=>{
+    if (!currentSchema) return; const id = prompt('Tag id'); if (!id) return; const name = prompt('Tag name');
+    currentSchema.traits.tags.push({ id, name }); saveSchema(); refreshSchemaEditor(); buildPrefsUI();
+  });
+  document.getElementById('btnNewCategorical').addEventListener('click', ()=>{
+    if (!currentSchema) return; const id = prompt('Categorical id'); if (!id) return; const name = prompt('Categorical name');
+    currentSchema.traits.categoricals.push({ id, name, options: [] }); saveSchema(); refreshSchemaEditor(); buildPrefsUI();
+  });
+
+  // Helpers: file pick & download
+  async function pickFile(acceptExt) {
+    if (window.showOpenFilePicker) {
+      const [h] = await showOpenFilePicker({ types: [{ description:'JSON', accept:{ 'application/json':[acceptExt||'.json'] } }] });
+      return await h.getFile();
+    } else {
+      return new Promise((resolve) => {
+        const inp = document.createElement('input'); inp.type='file'; inp.accept=acceptExt||'.json';
+        inp.onchange = () => resolve(inp.files[0]); inp.click();
+      });
+    }
+  }
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // Render prefs UI from schema
+  function buildPrefsUI() {
+    if (!currentSchema) return;
+    els.prefs.innerHTML = '';
+
+    // Scalars preferences and weights
+    const scSec = document.createElement('div'); scSec.className='section'; scSec.innerHTML = '<h3>Scalars</h3>';
+    currentPrefs.scalars ||= {}; currentPrefs.weights ||= {};
+    for (const s of (currentSchema.traits.scalars||[])) {
+      const prefVal = currentPrefs.scalars[s.id] ?? s.default ?? 0.5;
+      const weightVal = currentPrefs.weights[s.id] ?? s.weight ?? 1;
+      const row = document.createElement('div'); row.className='row';
+      row.innerHTML = `
+        <label class="grow">${s.name} <span class="muted" id="lab-${s.id}">${prefVal.toFixed(2)}</span></label>
+        <input type="range" min="0" max="1" step="0.01" value="${prefVal}" data-kind="pref" data-id="${s.id}">
+        <span class="muted">weight</span>
+        <input type="number" min="0" step="0.1" value="${weightVal}" style="width:80px" data-kind="weight" data-id="${s.id}">
+      `;
+      scSec.appendChild(row);
+    }
+    els.prefs.appendChild(scSec);
+
+    // Tags filters
+    const tSec = document.createElement('div'); tSec.className='section'; tSec.innerHTML = '<h3>Tags</h3>';
+    const reqWrap = document.createElement('div'); reqWrap.innerHTML = '<div class="muted">Required</div><div class="chips" id="reqTags"></div>';
+    const exWrap  = document.createElement('div'); exWrap.innerHTML  = '<div class="muted" style="margin-top:8px;">Excluded</div><div class="chips" id="exTags"></div>';
+    const reqTags = currentPrefs.required_tags || []; const exTags = currentPrefs.excluded_tags || [];
+    for (const t of (currentSchema.traits.tags||[])) {
+      reqWrap.querySelector('#reqTags').appendChild(chipToggle(t.id, t.name, reqTags, (on)=>{toggleInArray(currentPrefs.required_tags, t.id, on);}));
+      exWrap.querySelector('#exTags').appendChild(chipToggle(t.id, t.name, exTags, (on)=>{toggleInArray(currentPrefs.excluded_tags, t.id, on);}));
+    }
+    tSec.appendChild(reqWrap); tSec.appendChild(exWrap); els.prefs.appendChild(tSec);
+
+    // Categorical filters
+    const cSec = document.createElement('div'); cSec.className='section'; cSec.innerHTML = '<h3>Categoricals</h3>';
+    currentPrefs.categorical_filters ||= {};
+    for (const c of (currentSchema.traits.categoricals||[])) {
+      const row = document.createElement('div'); row.className='row';
+      const select = document.createElement('select'); select.multiple = true; select.size = Math.min(6, (c.options||[]).length || 3);
+      select.dataset.cat = c.id;
+      for (const o of (c.options||[])) {
+        const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; select.appendChild(opt);
+      }
+      const chosen = new Set(currentPrefs.categorical_filters[c.id]||[]);
+      Array.from(select.options).forEach(op=>{ if (chosen.has(op.value)) op.selected = true; });
+      row.appendChild(document.createTextNode(c.name)); row.appendChild(select);
+      cSec.appendChild(row);
+    }
+    els.prefs.appendChild(cSec);
+
+    // Wire inputs
+    els.prefs.querySelectorAll('input[type="range"]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const id = inp.dataset.id; const v = parseFloat(inp.value);
+        currentPrefs.scalars[id] = v; const lab = document.getElementById('lab-'+id); if (lab) lab.textContent = v.toFixed(2);
+      });
+    });
+    els.prefs.querySelectorAll('input[type="number"]').forEach(inp=>{
+      inp.addEventListener('change', ()=>{ const id = inp.dataset.id; const v = Math.max(0, parseFloat(inp.value)||0); currentPrefs.weights[id] = v; });
+    });
+    els.prefs.querySelectorAll('select[multiple]').forEach(sel=>{
+      sel.addEventListener('change', ()=>{ const cat = sel.dataset.cat; currentPrefs.categorical_filters[cat] = Array.from(sel.selectedOptions).map(o=>o.value); });
+    });
+  }
+
+  function chipToggle(id, label, activeArr, onToggle) {
+    if (!Array.isArray(activeArr)) activeArr = (activeArr = []);
+    const el = document.createElement('button'); el.type='button'; el.className='chip'; el.dataset.id=id; el.textContent=label;
+    const active = new Set(activeArr);
+    if (active.has(id)) el.style.outline = '2px solid rgba(139,255,181,.3)';
+    el.addEventListener('click', ()=>{
+      const nowActive = !(active.has(id));
+      onToggle(nowActive);
+      if (nowActive) { el.style.outline = '2px solid rgba(139,255,181,.3)'; active.add(id); }
+      else { el.style.outline = ''; active.delete(id); }
+    });
+    return el;
+  }
+  function toggleInArray(arr, id, on) {
+    if (!Array.isArray(arr)) arr = (arr = []);
+    const i = arr.indexOf(id); if (on && i<0) arr.push(id); if (!on && i>=0) arr.splice(i,1);
+  }
+
+  async function refreshSchemaSelect(selectId) {
+    const all = await idbAll('schemas');
+    els.schemaSelect.innerHTML = '';
+    const opt = document.createElement('option'); opt.value=''; opt.textContent='— choose schema —'; els.schemaSelect.appendChild(opt);
+    for (const s of all) { const o = document.createElement('option'); o.value = s.id; o.textContent = `${s.name} (${s.id})`; els.schemaSelect.appendChild(o); }
+    if (selectId) { els.schemaSelect.value = selectId; }
+    if (els.schemaSelect.value) {
+      const s = await idbGet('schemas', els.schemaSelect.value);
+      const d = await idbGet('datasets', els.schemaSelect.value);
+      if (s && d) await setActiveSchemaAndItems(s, d);
+    }
+  }
+
+  async function setActiveSchemaAndItems(schema, items) {
+    currentSchema = schema; currentItems = items; currentPrefs = buildDefaultPrefs(schema);
+    els.currentSchemaName.textContent = `${schema.name} v${schema.version}`;
+    buildPrefsUI(); renderDataTable(); runMatching(); refreshSchemaEditor();
+  }
+  function buildDefaultPrefs(schema) {
+    return { scalars: Object.fromEntries((schema.traits.scalars||[]).map(s=>[s.id, s.default??0.5])), weights: (schema.defaults?.weights)||{}, required_tags:[...(schema.defaults?.required_tags||[])], excluded_tags:[...(schema.defaults?.excluded_tags||[])], categorical_filters: JSON.parse(JSON.stringify(schema.defaults?.categorical_filters||{})) };
+  }
+
+  function renderDataTable() {
+    const wrap = document.getElementById('dataTableWrap'); if (!wrap) return; wrap.innerHTML = '';
+    if (!currentItems) { wrap.innerHTML = '<p class="muted">No items loaded.</p>'; els.itemsCount.textContent=''; return; }
+    els.itemsCount.textContent = `${currentItems.items.length} items`;
+    const table = document.createElement('table'); table.className='table';
+    const thead = document.createElement('thead'); const trh = document.createElement('tr');
+    ['id','name',... (currentSchema?.traits?.scalars||[]).map(s=>`sc:${s.id}`), ...(currentSchema?.traits?.tags||[]).map(t=>`tag:${t.id}`) ].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const it of currentItems.items) {
+      const tr = document.createElement('tr');
+      const cId = document.createElement('td'); cId.textContent = it.id; tr.appendChild(cId);
+      const cName = document.createElement('td');
+      const nameInp = document.createElement('input'); nameInp.type='text'; nameInp.value = it.name; nameInp.className='grow'; nameInp.addEventListener('change', ()=>{ it.name = nameInp.value; saveItems(); }); cName.appendChild(nameInp); tr.appendChild(cName);
+      for (const s of (currentSchema.traits.scalars||[])) {
+        const td = document.createElement('td'); const v = (it.traits?.scalars?.[s.id] ?? '');
+        const num = document.createElement('input'); num.type='number'; num.min='0'; num.max='1'; num.step='0.01'; num.value = v!==''?v:''; num.style.width='80px';
+        num.addEventListener('change', ()=>{ it.traits ||= {scalars:{},tags:{},categoricals:{}}; it.traits.scalars ||= {}; const val = num.value===''?null:parseFloat(num.value); if (val==null || isNaN(val)) delete it.traits.scalars[s.id]; else it.traits.scalars[s.id]=val; saveItems(); });
+        td.appendChild(num); tr.appendChild(td);
+      }
+      for (const t of (currentSchema.traits.tags||[])) {
+        const td = document.createElement('td'); const v = !!(it.traits?.tags?.[t.id]);
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = v; cb.addEventListener('change', ()=>{ it.traits ||= {scalars:{},tags:{},categoricals:{}}; it.traits.tags ||= {}; it.traits.tags[t.id] = cb.checked; saveItems(); });
+        td.appendChild(cb); tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody); wrap.appendChild(table);
+  }
+
+  function refreshSchemaEditor() {
+    if (!currentSchema) { els.schemaJson.textContent = '—'; return; }
+    els.schemaJson.textContent = JSON.stringify(currentSchema, null, 2);
+  }
+
+  async function saveSchema() { await idbPut('schemas', currentSchema); }
+  async function saveItems() { await idbPut('datasets', currentItems); }
+
+  function runMatching() {
+    if (!currentSchema || !currentItems) return;
+    // Read latest prefs from UI elements
+    // (ranges & numbers already write into currentPrefs via listeners)
+    const filtered = currentItems.items.filter(it => filterItem(it, currentPrefs, currentSchema));
+    let scored = filtered.map(it => ({ it, ...scoreItem(it, currentPrefs, currentSchema) }));
+    // sort by score desc, then tie-break scalars, then name
+    scored.sort((a,b)=>{
+      if (b.score !== a.score) return b.score - a.score;
+      const ties = currentSchema.engine?.scoring?.ties || [];
+      for (const t of ties) {
+        const av = a.it.traits?.scalars?.[t]; const bv = b.it.traits?.scalars?.[t];
+        if (typeof av==='number' && typeof bv==='number' && bv!==av) return bv - av;
+      }
+      return (a.it.name||'').localeCompare(b.it.name||'');
+    });
+
+    // Render results
+    els.results.innerHTML = '';
+    if (scored.length===0) { els.results.innerHTML = '<p class="muted">No items matched your filters.</p>'; return; }
+    for (const row of scored) {
+      const card = document.createElement('div'); card.className='card';
+      const ttl = document.createElement('div'); ttl.innerHTML = `<strong>${row.it.name}</strong>`; card.appendChild(ttl);
+      const sco = document.createElement('div'); sco.innerHTML = `<span class="muted">Score:</span> <span class="score">${row.score.toFixed(3)}</span>`; card.appendChild(sco);
+      const det = document.createElement('details');
+      det.innerHTML = `<summary>Traits</summary>`;
+      const list = document.createElement('div'); list.className='muted';
+      const sc = currentSchema.traits.scalars||[];
+      for (const s of sc) {
+        const iv = row.it.traits?.scalars?.[s.id];
+        if (typeof iv === 'number') list.appendChild(spanTxt(`${s.name}: ${iv}`));
+      }
+      const tg = currentSchema.traits.tags||[]; if (tg.length) list.appendChild(document.createElement('hr'));
+      for (const t of tg) { const has = !!(row.it.traits?.tags?.[t.id]); list.appendChild(spanTxt(`${t.name}: ${has ? 'yes':'no'}`)); }
+      det.appendChild(list); card.appendChild(det);
+      els.results.appendChild(card);
+    }
+  }
+  function spanTxt(t) { const s = document.createElement('div'); s.textContent=t; return s; }
+
+  // Initial bootstrap: seed examples if absent
+  async function bootstrap() {
+    await openDB();
+    const allSchemas = await idbAll('schemas');
+    if (!allSchemas.find(s=>s.id==='duck_test_v0')) await idbPut('schemas', SCHEMA_DUCK);
+    if (!allSchemas.find(s=>s.id==='hotels_v0')) await idbPut('schemas', SCHEMA_HOTELS);
+
+    const duckData = await idbGet('datasets','duck_test_v0');
+    if (!duckData) await idbPut('datasets', ITEMS_DUCK);
+    const hotelData = await idbGet('datasets','hotels_v0');
+    if (!hotelData) await idbPut('datasets', ITEMS_HOTELS);
+
+    await refreshSchemaSelect('duck_test_v0');
+    setStatus('Ready. Choose a schema and adjust preferences.');
+  }
+
+  // Wire toolbar extras
+  document.getElementById('schemaSelect');
+
+  bootstrap();
+  </script>
+</body>
+</html>

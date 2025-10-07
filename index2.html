@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Affinari Lite</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root{--bg:#0b0c10;--card:#111317;--ink:#e6e8ec;--muted:#9aa1ab;--brand:#6be675;--border:#1d2129}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    header h1{font-size:18px;margin:0 8px 0 0}
+    header .pill{border:1px solid var(--border);border-radius:999px;padding:6px 10px;display:inline-flex;gap:8px;align-items:center}
+    main{max-width:1150px;margin:0 auto;padding:20px}
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+    @media (max-width: 980px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .card h2,.card h3{margin:0 0 8px 0;font-size:16px}
+    .card h3{font-weight:600;color:var(--muted)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .num{width:110px}
+    .muted{color:var(--muted)}
+    .btn{appearance:none;border:1px solid var(--border);background:#171a21;color:var(--ink);padding:6px 10px;border-radius:10px;cursor:pointer}
+    .btn:hover{border-color:#2a2f39}
+    .btn.brand{background:var(--brand);color:#07160c;border:none}
+    .tag{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin:0 6px 6px 0;color:var(--muted)}
+    .result{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+    .score{font-variant-numeric:tabular-nums}
+    details summary{cursor:pointer;color:var(--muted)}
+    .drop{border:1px dashed #2b313c;border-radius:12px;padding:10px;text-align:center;color:var(--muted)}
+    input[type="file"]{display:none}
+    .small{font-size:12px}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;background:#0e1116;border:1px solid #22262f;border-radius:6px;padding:1px 6px}
+    select[multiple]{min-width:180px;min-height:96px;background:#0e1116;border:1px solid #22262f;color:var(--ink);border-radius:8px;padding:6px}
+    input[type="number"], input[type="range"]{background:#0e1116;border:1px solid #22262f;color:var(--ink);border-radius:8px;padding:6px}
+    input[type="range"]{width:160px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Affinari Lite</h1>
+  <div class="pill">
+    <span class="muted">Load bundle:</span>
+    <input id="urlInput" placeholder="https://…/bundle.json" style="min-width:300px;background:#0e1116;border:1px solid #22262f;color:var(--ink);border-radius:8px;padding:6px"/>
+    <button class="btn" id="loadUrlBtn">Fetch</button>
+    <label class="btn" for="fileInput">Choose file</label>
+    <input id="fileInput" type="file" accept="application/json"/>
+  </div>
+  <div class="pill small">
+    Or append <span class="kbd">?bundle=&lt;URL&gt;</span> to this page
+  </div>
+</header>
+
+<main class="grid">
+  <!-- LEFT: controls -->
+  <section class="card" id="controlsCard">
+    <h2>Preferences</h2>
+    <div id="scalarControls" class="row"></div>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <h3>Filters</h3>
+    <div class="row" id="tagFilters"></div>
+    <div class="row" id="categoricalFilters"></div>
+    <div class="row small muted" id="engineInfo"></div>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <div class="drop" id="dropzone">Drop a bundle JSON file here to load</div>
+  </section>
+
+  <!-- RIGHT: results -->
+  <section class="card">
+    <div class="toolbar">
+      <span class="muted">Results ranked by alignment (weighted Manhattan)</span>
+      <span id="resultMeta" class="muted small"></span>
+    </div>
+    <div id="results"></div>
+  </section>
+</main>
+
+<script>
+  // --------------------------
+  // Global state
+  // --------------------------
+  const state = {
+    scalars: {},       // user slider values
+    weights: {},       // user weights (will be normalized)
+    reqTags: [],       // must-have tag ids
+    categoricals: {},  // {catId: [selectedOptionIds]}
+    bundle: null,
+    items: []
+  };
+
+  // --------------------------
+  // Utilities
+  // --------------------------
+  function normaliseWeights(weights){
+    const s = Object.values(weights).reduce((a,b)=>a+b,0) || 1;
+    const out = {}; for (const k in weights) out[k] = weights[k] / s;
+    return out;
+  }
+
+  function weightedManhattan(user, item, weights){
+    const wsum = Object.values(weights).reduce((a,b)=>a+b,0) || 1;
+    let dist = 0;
+    for (const k in weights){
+      const iv = item.traits?.scalars?.[k];
+      const uv = user?.[k];
+      if (iv == null || uv == null) continue; // missing_scalar: ignore
+      dist += Math.abs(uv - iv) * weights[k];
+    }
+    return 1 - (dist / wsum);
+  }
+
+  function passesFilters(item){
+    // Required tags: all must be present (boolean map true)
+    if (state.reqTags.length){
+      for (const t of state.reqTags){
+        if (!item.traits?.tags || item.traits.tags[t] !== true) return false;
+      }
+    }
+    // Categoricals: require any overlap when non-empty
+    for (const [catId, selected] of Object.entries(state.categoricals)){
+      if (!selected.length) continue;
+      const have = new Set(item.traits?.categoricals?.[catId] || []);
+      if (!selected.some(v => have.has(v))) return false;
+    }
+    return true;
+  }
+
+  function setText(el, txt){ document.getElementById(el).textContent = txt; }
+
+  // --------------------------
+  // Render controls from schema
+  // --------------------------
+  function renderControls(schema){
+    const scalarsSchema = schema.traits?.scalars || [];
+    const tagsSchema = schema.traits?.tags || [];
+    const catsSchema = schema.traits?.categoricals || [];
+    const defaults = schema.defaults || {};
+
+    // Scalars + weights
+    const scalarsWrap = document.getElementById('scalarControls');
+    scalarsWrap.innerHTML = '';
+    const row = scalarsWrap;
+
+    state.scalars = {};
+    state.weights = {};
+
+    scalarsSchema.forEach(s => {
+      const val = s.default ?? 0.5;
+      const w   = (defaults.weights && defaults.weights[s.id] != null) ? defaults.weights[s.id] : (s.weight ?? 0.2);
+
+      state.scalars[s.id] = val;
+      state.weights[s.id] = w;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.minWidth = '280px';
+      card.innerHTML = `
+        <div><strong>${s.name}</strong></div>
+        <div class="row">
+          <label>Value<br><input data-k="${s.id}" data-kind="scalar" class="num" type="number" step="0.01" min="0" max="1" value="${val}"></label>
+          <input data-k="${s.id}" data-kind="scalar" type="range" min="0" max="1" step="0.01" value="${val}">
+          <label>Weight<br><input data-k="${s.id}" data-kind="weight" class="num" type="number" step="0.01" min="0" max="1" value="${w}"></label>
+        </div>
+      `;
+      row.appendChild(card);
+    });
+
+    scalarsWrap.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const k = e.target.dataset.k;
+        const kind = e.target.dataset.kind;
+        const v = parseFloat(e.target.value);
+        if (Number.isNaN(v)) return;
+        if (kind === 'scalar'){
+          state.scalars[k] = v;
+          // keep paired slider/number in sync
+          scalarsWrap.querySelectorAll(`input[data-k="${k}"][data-kind="scalar"]`).forEach(other=>{
+            if (other !== e.target) other.value = v;
+          });
+        } else {
+          state.weights[k] = v;
+        }
+        update();
+      });
+    });
+
+    // Tags (must-have)
+    const tagsWrap = document.getElementById('tagFilters');
+    tagsWrap.innerHTML = '';
+    if (tagsSchema.length){
+      const label = document.createElement('div');
+      label.innerHTML = `<span class="muted">Must-have tags:</span>`;
+      tagsWrap.appendChild(label);
+      tagsSchema.forEach(t=>{
+        const id = `tag_${t.id}`;
+        const w = document.createElement('div');
+        w.className = 'tag';
+        w.style.cursor = 'pointer';
+        w.dataset.tagId = t.id;
+        w.textContent = t.name;
+        w.onclick = ()=>{
+          const tid = w.dataset.tagId;
+          const i = state.reqTags.indexOf(tid);
+          if (i === -1){ state.reqTags.push(tid); w.style.borderColor = 'var(--brand)'; w.style.color = '#c8ffd3'; }
+          else { state.reqTags.splice(i,1); w.style.borderColor = 'var(--border)'; w.style.color = 'var(--muted)'; }
+          update();
+        };
+        tagsWrap.appendChild(w);
+      });
+      // Clear tags button
+      const clear = document.createElement('button');
+      clear.className = 'btn';
+      clear.textContent = 'Clear tags';
+      clear.onclick = ()=>{ state.reqTags = []; tagsWrap.querySelectorAll('.tag').forEach(t=>{t.style.borderColor='var(--border)';t.style.color='var(--muted)';}); update(); };
+      tagsWrap.appendChild(clear);
+    }
+
+    // Categoricals (multiselects with Clear)
+    const catsWrap = document.getElementById('categoricalFilters');
+    catsWrap.innerHTML = '';
+    state.categoricals = {};
+    catsSchema.forEach(c=>{
+      const selId = `cat_${c.id}`;
+      const box = document.createElement('div');
+      box.className = 'card';
+      box.style.minWidth = '280px';
+      box.innerHTML = `
+        <div><strong>${c.name}</strong></div>
+        <div class="row">
+          <select id="${selId}" multiple>
+            ${ (c.options||[]).map(o=>`<option value="${o.id}">${o.label}</option>`).join('') }
+          </select>
+          <button type="button" class="btn" id="${selId}_clear">Clear</button>
+        </div>
+      `;
+      catsWrap.appendChild(box);
+
+      // Bind behaviour
+      const sel = box.querySelector(`#${selId}`);
+      const clearBtn = box.querySelector(`#${selId}_clear`);
+      const initial = (schema.defaults?.categorical_filters?.[c.id]) || [];
+      // set initial selections
+      const set = new Set(initial);
+      Array.from(sel.options).forEach(opt=>{ if (set.has(opt.value)) opt.selected = true; });
+      state.categoricals[c.id] = initial.slice();
+
+      sel.addEventListener('change', ()=>{
+        const vals = Array.from(sel.selectedOptions).map(o=>o.value);
+        state.categoricals[c.id] = vals.length ? vals : [];
+        update();
+      });
+      clearBtn.onclick = ()=>{
+        Array.from(sel.options).forEach(opt => opt.selected = false);
+        state.categoricals[c.id] = [];
+        update();
+      };
+    });
+
+    // Engine info
+    const scoring = schema.engine?.scoring || {};
+    const ties = scoring.ties?.length ? `; ties → ${scoring.ties.join(', ')}` : '';
+    setText('engineInfo', `Scoring: ${scoring.method||'manhattan-lite'}; normalisation: ${scoring.normalization||'weights_sum'}; missing: ${scoring.missing_scalar||'ignore'}${ties}`);
+
+    update();
+  }
+
+  // --------------------------
+  // Render results
+  // --------------------------
+  function renderResults(){
+    const out = document.getElementById('results');
+    out.innerHTML = '';
+    const weights = normaliseWeights(state.weights);
+
+    // filter + score
+    const filtered = state.items.filter(passesFilters);
+    const scoring = state.bundle?.schema?.engine?.scoring || {};
+    const ties = Array.isArray(scoring.ties) ? scoring.ties : [];
+
+    const scored = filtered.map(it=>{
+      const score = weightedManhattan(state.scalars, it, weights);
+      return {...it, _score: Number(score.toFixed(4))};
+    }).sort((a,b)=>{
+      // primary: alignment descending
+      if (b._score !== a._score) return b._score - a._score;
+      // secondary: tie-breakers (first present scalar)
+      for (const k of ties){
+        const ak = a.traits?.scalars?.[k];
+        const bk = b.traits?.scalars?.[k];
+        if (ak != null && bk != null && ak !== bk) return bk - ak; // higher wins
+      }
+      // final: name asc
+      return (a.name||'').localeCompare(b.name||'');
+    });
+
+    setText('resultMeta', `${scored.length} shown / ${state.items.length} total`);
+
+    if (!scored.length){
+      out.innerHTML = `<p class="muted">No results with current filters.</p>`;
+      return;
+    }
+
+    for (const r of scored){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="result">
+          <div>
+            <div><strong>${r.name||r.id}</strong></div>
+            <div class="muted small">
+              ${renderTagsLine(r)} ${renderCatsLine(r)}
+            </div>
+          </div>
+          <div class="score"><strong>${r._score.toFixed(3)}</strong></div>
+        </div>
+        <details>
+          <summary>traits</summary>
+          <pre class="small">${escapeHtml(JSON.stringify(r.traits?.scalars||{}, null, 2))}</pre>
+        </details>
+      `;
+      out.appendChild(card);
+    }
+  }
+
+  function renderTagsLine(item){
+    const tags = item.traits?.tags || {};
+    const on = Object.keys(tags).filter(k=>tags[k]);
+    return on.length ? on.map(t=>`<span class="tag">${t}</span>`).join('') : '<span class="muted">no tags</span>';
+  }
+
+  function renderCatsLine(item){
+    const cats = item.traits?.categoricals || {};
+    const bits = Object.entries(cats).map(([k,v])=>`<span class="muted small">${k}: ${(v||[]).join(', ')}</span>`);
+    return bits.length ? `&nbsp;&middot;&nbsp; ${bits.join(' &nbsp; ')}` : '';
+  }
+
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // --------------------------
+  // Update pipeline
+  // --------------------------
+  function update(){ renderResults(); }
+
+  // --------------------------
+  // Bundle loading
+  // --------------------------
+  async function initFromBundle(bundle){
+    // Expect your single-file bundle shape
+    state.bundle = bundle;
+    state.items = (bundle.items?.items) || [];
+    renderControls(bundle.schema || {});
+  }
+
+  async function fetchBundle(url){
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    return res.json();
+  }
+
+  // Query string ?bundle=
+  (async function boot(){
+    // Wire URL input + button
+    document.getElementById('loadUrlBtn').onclick = async ()=>{
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+      try {
+        const b = await fetchBundle(url);
+        await initFromBundle(b);
+      } catch(err){ alert("Could not load bundle:\n" + err.message); console.error(err); }
+    };
+
+    // File input
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', async (e)=>{
+      const f = e.target.files?.[0]; if (!f) return;
+      try {
+        const text = await f.text();
+        const b = JSON.parse(text);
+        await initFromBundle(b);
+      } catch(err){ alert("Invalid JSON:\n" + err.message); console.error(err); }
+      fileInput.value = '';
+    });
+
+    // Drag & drop
+    const drop = document.getElementById('dropzone');
+    drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor = '#3a4250'; });
+    drop.addEventListener('dragleave', e=>{ drop.style.borderColor = '#2b313c'; });
+    drop.addEventListener('drop', async e=>{
+      e.preventDefault(); drop.style.borderColor = '#2b313c';
+      const f = e.dataTransfer.files?.[0]; if (!f) return;
+      try {
+        const text = await f.text();
+        const b = JSON.parse(text);
+        await initFromBundle(b);
+      } catch(err){ alert("Invalid JSON:\n" + err.message); console.error(err); }
+    });
+
+    // If bundle query present, load it
+    const qs = new URLSearchParams(location.search);
+    const qBundle = qs.get('bundle');
+    if (qBundle){
+      document.getElementById('urlInput').value = qBundle;
+      try {
+        const b = await fetchBundle(qBundle);
+        await initFromBundle(b);
+        return;
+      } catch(err){ console.warn('Bundle query failed', err); }
+    }
+
+    // Fallback: minimal embedded bundle (Duck test archetype) so page has something when opened offline with no file
+    const embedded = {
+      "bundle_version":"0.1.0",
+      "created_at":"2025-01-01T00:00:00Z",
+      "schema":{
+        "id":"duck_test_v0",
+        "name":"Duck Test",
+        "version":"0.1.0",
+        "engine":{"min_schema_version":"0.1.0","scoring":{"method":"manhattan-lite","normalization":"weights_sum","ties":["duckness"],"missing_scalar":"ignore"}},
+        "traits":{
+          "scalars":[
+            {"id":"looks_like_duck","name":"Looks like a duck","default":1,"weight":1},
+            {"id":"walks_like_duck","name":"Walks like a duck","default":1,"weight":1},
+            {"id":"quacks_like_duck","name":"Quacks like a duck","default":1,"weight":1},
+            {"id":"duckness","name":"Duckness (tie-break only)","default":0,"weight":0}
+          ],
+          "tags":[{"id":"waterfowl","name":"Waterfowl"}],
+          "categoricals":[]
+        },
+        "defaults":{"weights":{"looks_like_duck":1,"walks_like_duck":1,"quacks_like_duck":1,"duckness":0},"required_tags":[],"excluded_tags":[],"categorical_filters":{}}
+      },
+      "items":{
+        "domain_schema_id":"duck_test_v0","domain_schema_version":"0.1.0",
+        "items":[
+          {"id":"mallard","name":"Mallard Duck","traits":{"scalars":{"looks_like_duck":1,"walks_like_duck":1,"quacks_like_duck":1,"duckness":1},"tags":{"waterfowl":true}}},
+          {"id":"canada_goose","name":"Canada Goose","traits":{"scalars":{"looks_like_duck":0.8,"walks_like_duck":0.9,"quacks_like_duck":0.2,"duckness":0.4},"tags":{"waterfowl":true}}},
+          {"id":"swan","name":"Mute Swan","traits":{"scalars":{"looks_like_duck":0.7,"walks_like_duck":0.7,"quacks_like_duck":0.0,"duckness":0.3},"tags":{"waterfowl":true}}},
+          {"id":"platypus","name":"Platypus","traits":{"scalars":{"looks_like_duck":0.3,"walks_like_duck":0.9,"quacks_like_duck":0.0,"duckness":0.1}}},
+          {"id":"dog","name":"Dog","traits":{"scalars":{"looks_like_duck":0.0,"walks_like_duck":0.2,"quacks_like_duck":0.0,"duckness":0.0}}}
+        ]
+      },
+      "profiles":[]
+    };
+    await initFromBundle(embedded);
+  })();
+</script>
+</body>
+</html>

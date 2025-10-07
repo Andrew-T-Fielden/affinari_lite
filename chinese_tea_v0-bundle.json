@@ -1,0 +1,448 @@
+{
+  "bundle_version": "0.1.0",
+  "created_at": "2025-10-06T11:54:09Z",
+  "schema": {
+    "id": "chinese_tea_v0",
+    "name": "Chinese Tea Tasting",
+    "version": "0.1.1",
+    "description": "A tasting bundle for Chinese teas with graded sensory traits. Each item includes an empty external_link field.",
+    "engine": {
+      "min_schema_version": "0.1.0",
+      "scoring": {
+        "method": "manhattan-lite",
+        "normalization": "weights_sum",
+        "ties": [
+          "aftertaste_length",
+          "aroma_intensity"
+        ],
+        "missing_scalar": "ignore"
+      }
+    },
+    "traits": {
+      "scalars": [
+        {
+          "id": "aroma_intensity",
+          "name": "Aroma Intensity",
+          "default": 0.6,
+          "weight": 0.12
+        },
+        {
+          "id": "floral",
+          "name": "Floral Notes",
+          "default": 0.5,
+          "weight": 0.11
+        },
+        {
+          "id": "roast",
+          "name": "Roast/Char",
+          "default": 0.4,
+          "weight": 0.11
+        },
+        {
+          "id": "sweetness",
+          "name": "Sweetness",
+          "default": 0.5,
+          "weight": 0.11
+        },
+        {
+          "id": "bitterness",
+          "name": "Bitterness",
+          "default": 0.3,
+          "weight": 0.11
+        },
+        {
+          "id": "umami",
+          "name": "Umami/Savoury",
+          "default": 0.4,
+          "weight": 0.11
+        },
+        {
+          "id": "astringency",
+          "name": "Astringency",
+          "default": 0.4,
+          "weight": 0.11
+        },
+        {
+          "id": "body",
+          "name": "Body/Thickness",
+          "default": 0.5,
+          "weight": 0.11
+        },
+        {
+          "id": "aftertaste_length",
+          "name": "Aftertaste Length",
+          "default": 0.6,
+          "weight": 0.11
+        }
+      ],
+      "tags": [
+        {
+          "id": "roasted",
+          "name": "Roasted"
+        },
+        {
+          "id": "aged",
+          "name": "Aged"
+        },
+        {
+          "id": "compressed",
+          "name": "Compressed Cake/Brick"
+        },
+        {
+          "id": "spring_harvest",
+          "name": "Spring Harvest"
+        }
+      ],
+      "categoricals": [
+        {
+          "id": "style",
+          "name": "Style",
+          "options": [
+            {
+              "id": "green",
+              "label": "Green"
+            },
+            {
+              "id": "oolong_light",
+              "label": "Oolong (Light)"
+            },
+            {
+              "id": "oolong_roasted",
+              "label": "Oolong (Roasted)"
+            },
+            {
+              "id": "black",
+              "label": "Black (Red Tea)"
+            },
+            {
+              "id": "white",
+              "label": "White"
+            },
+            {
+              "id": "pu_erh_sheng",
+              "label": "Pu-erh (Sheng/Raw)"
+            },
+            {
+              "id": "pu_erh_shou",
+              "label": "Pu-erh (Shou/Ripe)"
+            },
+            {
+              "id": "yellow",
+              "label": "Yellow"
+            }
+          ]
+        },
+        {
+          "id": "origin",
+          "name": "Origin",
+          "options": [
+            {
+              "id": "zhejiang",
+              "label": "Zhejiang"
+            },
+            {
+              "id": "fujian",
+              "label": "Fujian"
+            },
+            {
+              "id": "yunnan",
+              "label": "Yunnan"
+            },
+            {
+              "id": "anhui",
+              "label": "Anhui"
+            },
+            {
+              "id": "guangdong",
+              "label": "Guangdong"
+            },
+            {
+              "id": "guizhou",
+              "label": "Guizhou"
+            }
+          ]
+        }
+      ]
+    },
+    "defaults": {
+      "weights": {
+        "aroma_intensity": 0.12,
+        "floral": 0.11,
+        "roast": 0.11,
+        "sweetness": 0.11,
+        "bitterness": 0.11,
+        "umami": 0.11,
+        "astringency": 0.11,
+        "body": 0.11,
+        "aftertaste_length": 0.11
+      },
+      "required_tags": [],
+      "excluded_tags": [],
+      "categorical_filters": {}
+    }
+  },
+  "items": {
+    "domain_schema_id": "chinese_tea_v0",
+    "domain_schema_version": "0.1.1",
+    "items": [
+      {
+        "id": "longjing_dragonwell",
+        "name": "Longjing (Dragon Well)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.6,
+            "floral": 0.5,
+            "roast": 0.2,
+            "sweetness": 0.6,
+            "bitterness": 0.2,
+            "umami": 0.5,
+            "astringency": 0.3,
+            "body": 0.4,
+            "aftertaste_length": 0.6
+          },
+          "tags": {
+            "spring_harvest": true
+          },
+          "categoricals": {
+            "style": [
+              "green"
+            ],
+            "origin": [
+              "zhejiang"
+            ]
+          }
+        }
+      },
+      {
+        "id": "tieguanyin_light",
+        "name": "Tieguanyin (Light Oolong)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.7,
+            "floral": 0.8,
+            "roast": 0.1,
+            "sweetness": 0.6,
+            "bitterness": 0.2,
+            "umami": 0.4,
+            "astringency": 0.3,
+            "body": 0.5,
+            "aftertaste_length": 0.7
+          },
+          "tags": {
+            "spring_harvest": true
+          },
+          "categoricals": {
+            "style": [
+              "oolong_light"
+            ],
+            "origin": [
+              "fujian"
+            ]
+          }
+        }
+      },
+      {
+        "id": "da_hong_pao",
+        "name": "Da Hong Pao (Wuyi Rock)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.8,
+            "floral": 0.4,
+            "roast": 0.8,
+            "sweetness": 0.5,
+            "bitterness": 0.3,
+            "umami": 0.5,
+            "astringency": 0.4,
+            "body": 0.7,
+            "aftertaste_length": 0.8
+          },
+          "tags": {
+            "roasted": true
+          },
+          "categoricals": {
+            "style": [
+              "oolong_roasted"
+            ],
+            "origin": [
+              "fujian"
+            ]
+          }
+        }
+      },
+      {
+        "id": "jin_jun_mei",
+        "name": "Jin Jun Mei",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.7,
+            "floral": 0.5,
+            "roast": 0.3,
+            "sweetness": 0.7,
+            "bitterness": 0.3,
+            "umami": 0.4,
+            "astringency": 0.3,
+            "body": 0.6,
+            "aftertaste_length": 0.7
+          },
+          "tags": {},
+          "categoricals": {
+            "style": [
+              "black"
+            ],
+            "origin": [
+              "fujian"
+            ]
+          }
+        }
+      },
+      {
+        "id": "dian_hong",
+        "name": "Dian Hong (Yunnan Black)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.8,
+            "floral": 0.4,
+            "roast": 0.4,
+            "sweetness": 0.6,
+            "bitterness": 0.4,
+            "umami": 0.5,
+            "astringency": 0.4,
+            "body": 0.7,
+            "aftertaste_length": 0.7
+          },
+          "tags": {},
+          "categoricals": {
+            "style": [
+              "black"
+            ],
+            "origin": [
+              "yunnan"
+            ]
+          }
+        }
+      },
+      {
+        "id": "sheng_pu_erh",
+        "name": "Sheng Pu-erh (Raw)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.7,
+            "floral": 0.5,
+            "roast": 0.1,
+            "sweetness": 0.4,
+            "bitterness": 0.6,
+            "umami": 0.5,
+            "astringency": 0.6,
+            "body": 0.6,
+            "aftertaste_length": 0.8
+          },
+          "tags": {
+            "aged": true,
+            "compressed": true
+          },
+          "categoricals": {
+            "style": [
+              "pu_erh_sheng"
+            ],
+            "origin": [
+              "yunnan"
+            ]
+          }
+        }
+      },
+      {
+        "id": "shou_pu_erh",
+        "name": "Shou Pu-erh (Ripe)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.8,
+            "floral": 0.2,
+            "roast": 0.5,
+            "sweetness": 0.5,
+            "bitterness": 0.3,
+            "umami": 0.7,
+            "astringency": 0.3,
+            "body": 0.8,
+            "aftertaste_length": 0.8
+          },
+          "tags": {
+            "aged": true,
+            "compressed": true
+          },
+          "categoricals": {
+            "style": [
+              "pu_erh_shou"
+            ],
+            "origin": [
+              "yunnan"
+            ]
+          }
+        }
+      },
+      {
+        "id": "bai_mudan",
+        "name": "Bai Mudan (White Peony)",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.6,
+            "floral": 0.7,
+            "roast": 0.0,
+            "sweetness": 0.6,
+            "bitterness": 0.2,
+            "umami": 0.4,
+            "astringency": 0.3,
+            "body": 0.4,
+            "aftertaste_length": 0.6
+          },
+          "tags": {},
+          "categoricals": {
+            "style": [
+              "white"
+            ],
+            "origin": [
+              "fujian"
+            ]
+          }
+        }
+      },
+      {
+        "id": "huangshan_maofeng",
+        "name": "Huangshan Maofeng",
+        "external_link": "",
+        "traits": {
+          "scalars": {
+            "aroma_intensity": 0.7,
+            "floral": 0.6,
+            "roast": 0.1,
+            "sweetness": 0.6,
+            "bitterness": 0.3,
+            "umami": 0.5,
+            "astringency": 0.3,
+            "body": 0.5,
+            "aftertaste_length": 0.7
+          },
+          "tags": {
+            "spring_harvest": true
+          },
+          "categoricals": {
+            "style": [
+              "green"
+            ],
+            "origin": [
+              "anhui"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "profiles": []
+}
